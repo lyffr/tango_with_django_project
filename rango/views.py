@@ -1,8 +1,10 @@
 from django.shortcuts import render
 from django.http import HttpResponse
 def index(request):
-    views_str = "<a href='http://127.0.0.1:8000/rango/about/'>http://127.0.0.1:8000/rango/about/</a>"
-    return HttpResponse("Rango says hey there partner!"+views_str)
+    context_dict = {'boldmessage': 'Crunchy, creamy, cookie, candy, cupcake!'}
+
+    return render(request, 'rango/index.html', context=context_dict)
 def about(request):
-    views_str = "<a href='http://127.0.0.1:8000/rango/'>http://127.0.0.1:8000/rango/</a>"
-    return HttpResponse("Rango says here is the about page "+views_str)
+    context_dict = {'boldmessage': 'This tutorial has been put together by Yangruizhe Jiang'}
+
+    return render(request, 'rango/about.html', context=context_dict)
