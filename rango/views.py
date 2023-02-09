@@ -10,18 +10,34 @@ from rango.forms import UserForm, UserProfileForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout
 from django.contrib.auth import authenticate, login, logout
+from datetime import datetime
 def index(request):
     category_list = Category.objects.order_by('-likes')[:5]
-    pages_list = Page.objects.order_by('-views')[:5]
+    page_list = Page.objects.order_by('-views')[:5]
     context_dict = {}
     context_dict['boldmessage'] = 'Crunchy, creamy, cookie, candy, cupcake!'
     context_dict['categories'] = category_list
-    context_dict['pages'] = pages_list
-    return render(request, 'rango/index.html', context=context_dict)
-def about(request):
-    context_dict = {'boldmessage': 'This tutorial has been put together by Yangruizhe Jiang'}
+    context_dict['pages'] = page_list
+# Obtain our Response object early so we can add cookie information.
+    visitor_cookie_handler(request)
+    context_dict['visits'] = request.session['visits']
 
-    return render(request, 'rango/about.html', context=context_dict)
+    response = render(request, 'rango/index.html', context=context_dict)
+    
+# Return response back to the user, updating any cookies that need changed.
+    return response
+
+
+def about(request):
+    context_dict = {}
+    context_dict['boldmessage'] =  'This tutorial has been put together by Yangruizhe Jiang'
+    visitor_cookie_handler(request)
+    context_dict['visits'] = request.session['visits']
+    
+    response = render(request, 'rango/about.html', context=context_dict)
+    
+
+    return response
 def show_category(request, category_name_slug):
 
     context_dict = {}
@@ -125,28 +141,39 @@ def user_login(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
-# Use Django's machinery to attempt to see if the username/password
-# combination is valid - a User object is returned if it is.
         user = authenticate(username=username, password=password)
-# If we have a User object, the details are correct.
-# If None (Python's way of representing the absence of a value), no user
-# with matching credentials was found.
         if user:
-# Is the account active? It could have been disabled.
+
             if user.is_active:
-# If the account is valid and active, we can log the user in.
-# We'll send the user back to the homepage.
                 login(request, user)
                 return redirect(reverse('rango:index'))
             else:
-# An inactive account was used - no logging in!
                 return HttpResponse("Your Rango account is disabled.")
         else:
-# Bad login details were provided. So we can't log the user in.
             print(f"Invalid login details: {username}, {password}")
             return HttpResponse("Invalid login details supplied.")
     else:
-# No context variables to pass to the template system, hence the
-# blank dictionary object...
         return render(request, 'rango/login.html')
+
+def get_server_side_cookie(request, cookie, default_val=None):
+    val = request.session.get(cookie)
+    if not val:
+        val = default_val
+    return val
+
+def visitor_cookie_handler(request):
+    visits = int(get_server_side_cookie(request, 'visits', '1'))
+    last_visit_cookie = get_server_side_cookie(request,'last_visit',str(datetime.now()))
+    last_visit_time = datetime.strptime(last_visit_cookie[:-7],'%Y-%m-%d %H:%M:%S')
+# If it's been more than a day since the last visit...
+    if (datetime.now() - last_visit_time).seconds > 0:
+        visits = visits + 1
+# Update the last visit cookie now that we have updated the count
+        request.session['last_visit'] = str(datetime.now())
+    else:
+# Set the last visit cookie
+        request.session['last_visit'] = last_visit_cookie
+# Update/set the visits cookie
+    request.session['visits'] = visits
+
 
